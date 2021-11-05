@@ -4,6 +4,7 @@
 #$ -q my_queue
 #$ -cwd
 #$ -l virtual_free=20G,h_rt=10:00:00
+#$ -pe smp 2
 #$ -V
 #$ -e /my_home/logs/$TASK_ID.err
 #$ -o /my_home/logs/$TASK_ID.out
@@ -18,6 +19,8 @@
 # -q queue to sumbit
 # -cwd set as working directory the current one
 # -l resources requested
+# -pe smp request more threads in the same node
+#    for each job in the array
 # -V Specifies all active environment variables
 #    to be exported to the context of the job
 # -e file to save standard error
