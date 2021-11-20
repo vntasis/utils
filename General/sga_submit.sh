@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 #$ -N my_job
 #$ -t 1-34
+#$ -tc 10
 #$ -q my_queue
 #$ -cwd
 #$ -l virtual_free=20G,h_rt=10:00:00
@@ -17,6 +18,7 @@
 # -N Job_name
 # -t range of array
 # -q queue to sumbit
+# -tc maximum number of tasks run concurrently
 # -cwd set as working directory the current one
 # -l resources requested
 # -pe smp request more threads in the same node
