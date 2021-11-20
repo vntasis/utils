@@ -17,8 +17,8 @@
 # Description of parameters declared above
 # -N Job_name
 # -t range of array
-# -q queue to sumbit
 # -tc maximum number of tasks run concurrently
+# -q queue to submit
 # -cwd set as working directory the current one
 # -l resources requested
 # -pe smp request more threads in the same node
@@ -36,7 +36,7 @@ source $home/virtenv_py3/bin/activate
 # Set home directory
 home="/my/home/dir/"
 
-# Define a list - Each item of the list will be utilized in a diffrent job
+# Define a list - Each item of the list will be utilized in a different job
 my_var=$(ls -1 $home/samples_to_analyze/ | sed -n ${SGE_TASK_ID}p)
 
 # Run your analysis
