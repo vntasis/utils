@@ -1,5 +1,4 @@
 # Awk one-liners
----
 
 - __Print the number of columns of a table__
 ```
