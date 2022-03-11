@@ -25,3 +25,18 @@ awk 'ORS=NR%5?",":"\n"' file
 ```
 awk '{ sum+=$1 } END { print sum/NR }' file
 ```
+
+- Filter lines based on an arbitrary threshold
+```
+awk '$3 > 10' file
+```
+
+- Subset every line given a regular expression
+```
+awk 'BEGIN { regex="ENST[0-9]{11}.[0-9]" } { match($0, regex); print substr($0,RSTART,RLENGTH); }'
+```
+
+- Detect lines that match a pattern
+```
+awk '$0~"protein_coding"'
+```
