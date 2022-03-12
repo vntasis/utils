@@ -71,16 +71,16 @@ counter=1
 
 while [ $counter -le "$bs" ]
 do
-	# creating random permutation of Peaks file
-	# Results stored in temp file
-	shuffleBed -i "$peaks" -g "$genomefile" | \
+    # creating random permutation of Peaks file
+    # Results stored in temp file
+    shuffleBed -i "$peaks" -g "$genomefile" | \
     sort -k1,1 -k2,2n -k3,3n | \
-	intersectBed -sorted -wao -a - -b "$context" | \
+    intersectBed -sorted -wao -a - -b "$context" | \
         awk -v size="$size_peaks" -v ratio="$context_coverage" \
         '$NF!=0 { val+=$NF } END { print (val/size)/ratio }' >> "${nameA}_${nameB}.tmp"
 
     # report progress
-	echo "$counter" | awk '{if ($1%100==0) { print "simulations="$1 }}'
+    echo "$counter" | awk '{if ($1%100==0) { print "simulations="$1 }}'
 
 
         #echo $counter
