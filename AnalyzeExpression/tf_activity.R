@@ -239,7 +239,7 @@ if (!(is.null(opt$diff_expr))) {
                 axis.text.x = element_text(angle = 45, hjust = 1, size =10, face= "bold"),
                 axis.text.y = element_text(size =10, face= "bold"),
                 panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-          xlab("Pathways")
+          xlab("Transcription Factors")
   )
 
 }
