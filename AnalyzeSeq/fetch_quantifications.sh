@@ -12,7 +12,7 @@ set -euo pipefail
 
 # Functions
 function finish {
-    rm -r "$tmp_dir" "${type}_tmp.tsv"
+    rm -r "$tmp_dir1" "$tmp_dir2" "${type}_tmp.tsv"
 }
 
 # Input
@@ -37,37 +37,39 @@ db=$3
     field=5
 [ "$fi" = 'length' ] && \
     field=3
-[ "$fi" = 'ef.length' ] && \
+[ "$fi" = 'ef_length' ] && \
     field=4
 
 
 
-# Create a temporary directory
-tmp_dir=$(mktemp -d -p .)
+# Create a temporary directories
+tmp_dir1=$(mktemp -d -p .)
+tmp_dir2=$(mktemp -d -p .)
 
 # Fetch data
-awk -v type="$type" '
-    BEGIN { OFS="," } $5==type { print $1,$3 }' "$db" | \
-    xargs -I % sh -c "cut -f $field \
+awk -v type="$type" \
+    -v field="$field" \
+    -v tmp_dir="$tmp_dir1" '
+    BEGIN { OFS="," } $5==type { print $1,$3,field,tmp_dir }' "$db" | \
+    xargs -I % sh -c 'cut -f $(echo % | cut -d ',' -f3) \
     $(echo % | cut -d ',' -f2) > \
-    $tmp_dir/$(echo % | cut -d ',' -f1)"
+    $(echo % | cut -d ',' -f4)/$(echo % | cut -d ',' -f1)'
 
 # Paste data for all samples
-paste "$tmp_dir/*" \
+paste "$tmp_dir1/"* | \
     awk 'NR > 1' > "${type}_tmp.tsv"
 
 # Create a header denoting the sample
-ls "$tmp_dir" | paste -s > "$tmp_dir/header"
+ls "$tmp_dir1" | paste -s > "$tmp_dir2/header"
 
 # Fetch Gene / Transcript ids
-sample=$(awk -v type="$type" '
-    $5==type & NR==1 { print $3 }' "$db")
-awk '{ print $1 }' "$sample" > "$tmp_dir/ids"
+sample=$(awk -v type="$type" '$5==type && !seen[$5]++ { print $3 }' "$db")
+awk '{ print $1 }' "$sample" > "$tmp_dir2/ids"
 
 # Create final output
-cat "$tmp_dir/header" "${type}_tmp.tsv" | \
-    paste "$tmp_dir/ids" - > \
-    "$type.tsv"
+cat "$tmp_dir2/header" "${type}_tmp.tsv" | \
+    paste "$tmp_dir2/ids" - > \
+    "${type}_${fi}.tsv"
 
 # Clean up
 trap finish EXIT
