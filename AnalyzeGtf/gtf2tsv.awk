@@ -31,9 +31,9 @@ BEGIN {
         delete ARGV[i]
     }
     OFS="\t"
-    geneid_regex = "ENSG[0-9]{11}.[0-9]"
+    geneid_regex = "ENSG[0-9]{11}[.]?[0-9]*"
     gtype_regex = "gene_type[^;]+;?"
-    transid_regex = "ENST[0-9]{11}.[0-9]"
+    transid_regex = "ENST[0-9]{11}[.]?[0-9]*"
     ttype_regex = "transcript_type[^;]+;?"
     name_regex = "gene_name[^;]+;?"
 }
