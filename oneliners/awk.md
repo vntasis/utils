@@ -30,17 +30,17 @@ awk '{ sum+=$1 } END { print sum/NR }' file
 sort -n values.txt | awk '{ values[NR]=$1 } END { if (NR % 2) { print values[(NR + 1) / 2] } else { print (values[NR/2] + values[NR/2 + 1]) / 2.0 }}'
 ```
 
-- Filter lines based on an arbitrary threshold
+- __Filter lines based on an arbitrary threshold__
 ```
 awk '$3 > 10' file
 ```
 
-- Subset every line given a regular expression
+- __Subset every line given a regular expression__
 ```
 awk 'BEGIN { regex="ENST[0-9]{11}.[0-9]" } { match($0, regex); print substr($0,RSTART,RLENGTH); }'
 ```
 
-- Detect lines that match a pattern
+- __Detect lines that match a pattern__
 ```
 awk '$0~"protein_coding"'
 ```
