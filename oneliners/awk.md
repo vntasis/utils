@@ -25,6 +25,11 @@ awk 'ORS=NR%5?",":"\n"' file
 awk '{ sum+=$1 } END { print sum/NR }' file
 ```
 
+- __Calculate the median of a set of values__
+```
+sort -n values.txt | awk '{ values[NR]=$1 } END { if (NR % 2) { print values[(NR + 1) / 2] } else { print (values[NR/2] + values[NR/2 + 1]) / 2.0 }}'
+```
+
 - Filter lines based on an arbitrary threshold
 ```
 awk '$3 > 10' file
