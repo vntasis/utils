@@ -44,3 +44,8 @@ awk 'BEGIN { regex="ENST[0-9]{11}.[0-9]" } { match($0, regex); print substr($0,R
 ```
 awk '$0~"protein_coding"'
 ```
+
+- __Split a file in two for every 8 lines__
+```
+awk 'NR%8==1 || NR%8==2 || NR%8==3 || NR%8==4 { print $0 > "read1.fastq" } NR%8==5 || NR%8==6 || NR%8==7 || NR%8==0 { print $0 > "read2.fastq" }' reads.fastq
+```
