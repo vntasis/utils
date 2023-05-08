@@ -36,12 +36,31 @@ import numpy as np
 from plotnine import *
 from dfply import *
 
+# Define a recursive function to remove a specific key from a nested
+# dictionary or list
+def remove_key(data, key):
+    if isinstance(data, dict):
+        for k, v in list(data.items()):
+            if k == key:
+                del data[k]
+            else:
+                remove_key(v, key)
+    elif isinstance(data, list):
+        for item in data:
+            remove_key(item, key)
 
 # Function that reads the path to a json
 # file and returns the data in a pandas df
 def read_stats_json(file_path):
+    # Open json file
     with open(file_path) as f:
         json_file = json.load(f)
+
+    # Remove Insert Sizes entry
+    # It is not required, and it has huge size
+    remove_key(json_file, 'insert_sizes')
+
+    # Convert json dictionary to a pandas df
     df = pd.json_normalize(json_file)
     return df
 
