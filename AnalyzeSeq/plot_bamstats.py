@@ -74,9 +74,9 @@ def main():
 
     # Read all json files, turn into a panda dataframe
     bamstats_files = os.listdir(bamstats_dir)
-    bamstats_df = read_stats_json(bamstats_dir + bamstats_files[0])
+    bamstats_df = read_stats_json(os.path.join(bamstats_dir, bamstats_files[0]))
     for i in range(1,len(bamstats_files)):
-        df = read_stats_json(bamstats_dir + bamstats_files[i])
+        df = read_stats_json(os.path.join(bamstats_dir, bamstats_files[i]))
         bamstats_df = bamstats_df.append(df, ignore_index=True)
 
     # Summarize the number of total - mapped - uniqule mapped reads
