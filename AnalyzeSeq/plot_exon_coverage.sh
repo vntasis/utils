@@ -29,7 +29,7 @@ exonBedfile=$2
 threads=$3
 k_cluster=$4
 #filter=$5
-filename=$(basename -s '.bam' $bamfile)
+filename=$(basename -s '.bam' "$bamfile")
 
 # Compute bigWig file
 bamCoverage --binSize 10 -p "$threads" \

@@ -58,7 +58,7 @@ enr=$(awk -v overlap="$overlap_proportion" -v context="$context_coverage" 'BEGIN
 
 
 
-echo "Enrichment of overlap=" $enr
+echo "Enrichment of overlap=" "$enr"
 echo "Calculating significance"
 echo "Grab a coffee, this may take a while..."
 
@@ -125,7 +125,7 @@ awk -v peaks="$nameA" \
         print "P-value:", pvalue;
 
         exit;
-    }' > ${nameA}_${nameB}_enrichment.tsv
+    }' > "${nameA}_${nameB}_enrichment.tsv"
 
 
 # Clean up

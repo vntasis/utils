@@ -25,8 +25,8 @@ setA=$1
 setB=$2
 genome=$3
 Npromoter=$4
-nameA=$(basename -s '.bed' $setA)
-nameB=$(basename -s '.bed' $setB)
+nameA=$(basename -s '.bed' "$setA")
+nameB=$(basename -s '.bed' "$setB")
 
 
 
@@ -38,10 +38,10 @@ nameB=$(basename -s '.bed' $setB)
 # overlap.
 #------------------------------------------------------------------
 echo 'Calculate overlap with promoters'
-bedtools flank -i $setA -g $genome -l $Npromoter -r 0 -s | \
+bedtools flank -i "$setA" -g "$genome" -l "$Npromoter" -r 0 -s | \
     sort -k1,1 -k2,2n -k3,3n -u | \
-    bedtools window -a stdin -b $setB -r $Npromoter -l 0 -sw \
-    > ${nameA}_${nameB}_overlap.tsv
+    bedtools window -a stdin -b "$setB" -r "$Npromoter" -l 0 -sw \
+    > "${nameA}_${nameB}_overlap.tsv"
 
 
 
@@ -51,9 +51,9 @@ bedtools flank -i $setA -g $genome -l $Npromoter -r 0 -s | \
 #--------------------------------------------------------------------
 
 echo 'Calculate proportion of promoters that overlap'
-bedtools flank -i $setA -g $genome -l $Npromoter -r 0 -s | \
+bedtools flank -i "$setA" -g "$genome" -l "$Npromoter" -r 0 -s | \
     sort -k1,1 -k2,2n -k3,3n -u | \
-    bedtools window -a stdin -b $setB -r $Npromoter -l 0 -sw -c | \
+    bedtools window -a stdin -b "$setB" -r "$Npromoter" -l 0 -sw -c | \
     awk '
     !seen1[$4]++ { Ngenes++ }
     $7 > 0{ NsetB+=$7; NsetA++ }
@@ -65,7 +65,7 @@ bedtools flank -i $setA -g $genome -l $Npromoter -r 0 -s | \
             print "Proportion of promoters in setA overlapping:", NsetA/NR;
             print "Average Number of intervals in setB that overlap:", NsetB/NsetA;
         }
-    }' > ${nameA}_${nameB}_report.tsv
+    }' > "${nameA}_${nameB}_report.tsv"
 
 
 echo 'Done!'

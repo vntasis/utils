@@ -37,10 +37,10 @@ source $home/virtenv_py3/bin/activate
 home="/my/home/dir/"
 
 # Define a list - Each item of the list will be utilized in a different job
-my_var=$(ls -1 $home/samples_to_analyze/ | sed -n ${SGE_TASK_ID}p)
+my_var=$(ls -1 $home/samples_to_analyze/ | sed -n "${SGE_TASK_ID}p")
 
 # Run your analysis
-my_analysis.py $my_var
+my_analysis.py "$my_var"
 
 # Send an email notification at the end of running the job array
 if [ "$SGE_TASK_ID" -eq "$SGE_TASK_LAST" ]

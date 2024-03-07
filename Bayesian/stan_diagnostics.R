@@ -13,6 +13,7 @@ suppressMessages(suppressWarnings(library(magrittr)))
 #------------------------------------
 ## Define/Read command-line arguments
 #------------------------------------
+doc <-
 'Generate diagnostics plots after a cmdstan run
 
 Usage:
@@ -26,15 +27,14 @@ Options:
   -i --id ID                    ID of the sample files, e.g. for "experiment1_model1_1.csv" the ID is "experiment1_model1".
   -p --parameters PARAMETERS    Parameters to plot diagnostics for. It is a comma-separated string.
                                 E.g. "alpha,beta,sigma".
-' -> doc
+'
 
 opt <- docopt(doc)
-#print(opt)
 
 samples_dir <- opt$samples_dir
 id <- opt$id
 chains <- as.integer(opt$chains)
-parameters <- unlist(strsplit(opt$parameters, ','))
+parameters <- unlist(strsplit(opt$parameters, ","))
 
 
 
@@ -50,7 +50,7 @@ fit <- read_stan_csv(paths)
 posterior <- as.array(fit)
 
 
-pdf(paste0(id,"_diagnostics.pdf"))
+pdf(paste0(id, "_diagnostics.pdf"))
 
 #----------------------------
 ## Plot credibility intervals
@@ -75,7 +75,7 @@ print(mcmc_pairs(posterior, np = np, pars = parameters,
 # trace plot with divergences
 color_scheme_set("mix-brightblue-gray")
 print(mcmc_trace(posterior, pars = parameters, np = np) +
-      xlab("Post-warmup iteration"))
+        xlab("Post-warmup iteration"))
 
 # energy histograms
 print(mcmc_nuts_energy(np))

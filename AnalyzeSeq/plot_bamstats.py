@@ -1,30 +1,29 @@
 #!/usr/bin/env python
 
-#==========================================
-## Plot bam statistics output from bamstats
-#==========================================
-## This script will take as parameter the
-## path to a directory that contains json
-## files outputed by bamstats
-## (https://github.com/guigolab/bamstats)
-## and will produce two plots that
-## summarize the results
-##
-## Positional parameters:
-## @param1 path to dir with json files
-## @param2 width of the pdf containing
-## the barplot
-## @ param3 height of the pdf containing
-## the barplot
-##
-## Returns:
-## Two pdf files
-## 1. A barplot of the number of mapped
-## reads per sample
-## 2. A boxplot with the proportion of
-## mapped reads in different genomic
-## regions e.g. exon, intron, intergenic
-#------------------------------------------
+"""Plot bam statistics output from bamstats
+
+This script will take as parameter the
+path to a directory that contains json
+files outputed by bamstats
+(https://github.com/guigolab/bamstats)
+and will produce two plots that
+summarize the results
+
+Positional parameters:
+@param1 path to dir with json files
+@param2 width of the pdf containing
+the barplot
+@ param3 height of the pdf containing
+the barplot
+
+Returns:
+Two pdf files
+1. A barplot of the number of mapped
+reads per sample
+2. A boxplot with the proportion of
+mapped reads in different genomic
+regions e.g. exon, intron, intergenic
+"""
 
 
 # Import required libraries
@@ -35,6 +34,7 @@ import os
 import numpy as np
 from plotnine import *
 from dfply import *
+
 
 # Define a recursive function to remove a specific key from a nested
 # dictionary or list
@@ -48,6 +48,7 @@ def remove_key(data, key):
     elif isinstance(data, list):
         for item in data:
             remove_key(item, key)
+
 
 # Function that reads the path to a json
 # file and returns the data in a pandas df
@@ -64,6 +65,7 @@ def read_stats_json(file_path):
     df = pd.json_normalize(json_file)
     return df
 
+
 # Main function
 def main():
 
@@ -74,8 +76,9 @@ def main():
 
     # Read all json files, turn into a panda dataframe
     bamstats_files = os.listdir(bamstats_dir)
-    bamstats_df = read_stats_json(os.path.join(bamstats_dir, bamstats_files[0]))
-    for i in range(1,len(bamstats_files)):
+    bamstats_df = read_stats_json(os.path.join(bamstats_dir,
+                                               bamstats_files[0]))
+    for i in range(1, len(bamstats_files)):
         df = read_stats_json(os.path.join(bamstats_dir, bamstats_files[i]))
         bamstats_df = bamstats_df.append(df, ignore_index=True)
 
@@ -96,7 +99,6 @@ def main():
         + ylab('Number of reads'))
 
     plot.save('mapped_reads.pdf', width=plot_width, height=plot_height)
-
 
     # Summarize the proportion of mapped reads in different
     # genomic regions, e.g exon, intergenic, intron
@@ -128,8 +130,7 @@ def main():
         gather('category', 'proportion') >> \
         separate(X.category, ['mapping_type', 'mapped_region'], '__', True, extra='merge')
 
-
-        # Plot boxplots with the different proportions of mapped reads
+    # Plot boxplots with the different proportions of mapped reads
     plot = (ggplot(proportion_reads, \
         aes(x='mapped_region', y='proportion', fill='mapping_type'))
         + geom_boxplot()
