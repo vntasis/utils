@@ -9,7 +9,7 @@
 
 BEGIN {
     OFS="\t"
-    geneid_regex = "ENSG[0-9]{11}[.]?[0-9]*"
+    geneid_regex = "ENSG[0-9]{11}[.]?[0-9]*(_PAR_Y)?"
     type_regex = "gene_type[^;]+;?"
     name_regex = "gene_name[^;]+;?"
 }
