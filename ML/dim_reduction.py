@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 
 # import numpy as np
-# import umap
 # import phate
 # import pymde
 
 from pathlib import Path
 
+import ast
 import pandas as pd
 import typer
 from plotnine import aes, geom_point, ggplot, labs, theme_bw
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE, Isomap
 from sklearn.preprocessing import StandardScaler
 from typing_extensions import Annotated
 
@@ -41,6 +40,29 @@ def preprocess(
         data = pca.fit_transform(data)
 
     return data
+
+
+# Function for parsing argument string
+def parse_kwargs_string(kwargs_string: str) -> dict:
+    """
+    Parse a string of comma-separated key-value pairs into a dictionary.
+    The values are evaluated using ast.literal_eval().
+
+    Args:
+        kwargs_string (str): A string of comma-separated key-value pairs.
+            Example: "x=5, y=10, z='hello'"
+
+    Returns:
+        dict: A dictionary containing the parsed key-value pairs.
+            Example: {'x': 5, 'y': 10, 'z': 'hello'}
+    """
+    kwargs_list = [param.strip() for param in kwargs_string.split(",")]
+    kwargs_dict = dict(param.split("=") for param in kwargs_list)
+
+    for key, value in kwargs_dict.items():
+        kwargs_dict[key] = ast.literal_eval(value)
+
+    return kwargs_dict
 
 
 # Use callback for global options and documentation
@@ -150,6 +172,8 @@ def isomap(
     """
     Perform Isomap for dimensionality reduction.
     """
+    from sklearn.manifold import Isomap
+
     # Read data
     data = preprocess(global_opts["input"], global_opts["scale"])
 
@@ -218,13 +242,15 @@ def tsne(
         bool,
         typer.Option(
             "--plot",
-            help="Make a scatterplot of the two first Principal Components."
+            help="Make a scatterplot of the two first t-SNE Components."
         ),
     ] = False,
 ):
     """
     Perform t-SNE for dimensionality reduction.
     """
+    from sklearn.manifold import TSNE
+
     # Read data
     data = preprocess(
         global_opts["input"],
@@ -254,6 +280,109 @@ def tsne(
             + theme_bw()
         )
         tsne_plot.save("tSNE_plot.pdf")
+
+
+# Command for UMAP
+@dreduc.command()
+def umap(
+    n_components: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="Number of Components to keep for reduction."
+        ),
+    ] = 2,
+    n_neighbors: Annotated[
+        int,
+        typer.Option(
+            help="Number of neighbors to use for constructing the UMAP graph."
+        ),
+    ] = 15,
+    min_dist: Annotated[
+        float,
+        typer.Option(
+            help="Minimum distance between points in the embedded space."
+        ),
+    ] = 0.1,
+    metric: Annotated[
+        str,
+        typer.Option(help="Distance metric to use."),
+    ] = 'euclidean',
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            help="Status updates during the optimization process."
+        ),
+    ] = False,
+    umap_kwargs: Annotated[
+        str,
+        typer.Option(help="String with arbitrary extra parameters for UMAP."),
+    ] = '',
+    pca_before: Annotated[
+        bool,
+        typer.Option(
+            "--pca_before",
+            help="Whether to perform PCA before UMAP."
+        ),
+    ] = False,
+    var_explained: Annotated[
+        float,
+        typer.Option(
+            min=0,
+            max=1,
+            help="""
+            If --pca_before is set, this specifies the proportion of variance
+            for the PCA Components to be kept.
+            """,
+        ),
+    ] = 0.95,
+    plot: Annotated[
+        bool,
+        typer.Option(
+            "--plot",
+            help="Make a scatterplot of the two first UMAP Components."
+        ),
+    ] = False,
+):
+    """
+    Perform UMAP for dimensionality reduction.
+    """
+    from umap import UMAP
+
+    # Read data
+    data = preprocess(
+        global_opts["input"],
+        global_opts["scale"],
+        do_pca=pca_before,
+        var_expl=var_explained,
+    )
+
+    # Parse UMAP kwargs string to dictionary
+    umap_kwargs_dict = parse_kwargs_string(umap_kwargs) if umap_kwargs else {}
+
+    # Perform UMAP
+    umap = UMAP(
+        n_components=n_components, n_neighbors=n_neighbors,
+        min_dist=min_dist, metric=metric,
+        verbose=verbose, **umap_kwargs_dict
+    )
+    reduced_data = umap.fit_transform(data)
+
+    # Write UMAP Components to a file
+    df = pd.DataFrame(
+        reduced_data, columns=[f"UMAP{i}" for i in range(1, n_components + 1)]
+    )
+    df.to_csv(global_opts["output"], index=False)
+
+    # Make UMAP scatterplot
+    if plot:
+        umap_plot = (
+            ggplot(df, aes(x="UMAP1", y="UMAP2"))
+            + geom_point()
+            + theme_bw()
+        )
+        umap_plot.save("UMAP_plot.pdf")
 
 
 if __name__ == "__main__":
