@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-# import numpy as np
-# import phate
 # import pymde
 
+import ast
 from pathlib import Path
 
-import ast
 import pandas as pd
 import typer
 from plotnine import aes, geom_point, ggplot, labs, theme_bw
@@ -307,7 +305,7 @@ def umap(
     metric: Annotated[
         str,
         typer.Option(help="Distance metric to use."),
-    ] = 'euclidean',
+    ] = "euclidean",
     verbose: Annotated[
         bool,
         typer.Option(
@@ -318,7 +316,7 @@ def umap(
     umap_kwargs: Annotated[
         str,
         typer.Option(help="String with arbitrary extra parameters for UMAP."),
-    ] = '',
+    ] = "",
     pca_before: Annotated[
         bool,
         typer.Option(
@@ -363,9 +361,12 @@ def umap(
 
     # Perform UMAP
     umap = UMAP(
-        n_components=n_components, n_neighbors=n_neighbors,
-        min_dist=min_dist, metric=metric,
-        verbose=verbose, **umap_kwargs_dict
+        n_components=n_components,
+        n_neighbors=n_neighbors,
+        min_dist=min_dist,
+        metric=metric,
+        verbose=verbose,
+        **umap_kwargs_dict,
     )
     reduced_data = umap.fit_transform(data)
 
@@ -383,6 +384,114 @@ def umap(
             + theme_bw()
         )
         umap_plot.save("UMAP_plot.pdf")
+
+
+# Command for PHATE
+@dreduc.command()
+def phate(
+    n_components: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="Number of Components to keep for reduction."
+        ),
+    ] = 2,
+    knn: Annotated[
+        int,
+        typer.Option(
+            help="Number of nearest neighbors on which to build kernel."
+        ),
+    ] = 15,
+    decay: Annotated[
+        int,
+        typer.Option(
+            help="Decay parameter for the potential of heat-diffusion."
+        ),
+    ] = 40,
+    knn_dist: Annotated[
+        str,
+        typer.Option(help="Distance metric to use for building kNN graph."),
+    ] = "euclidean",
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            help="Status updates during the optimization process."
+        ),
+    ] = False,
+    phate_kwargs: Annotated[
+        str,
+        typer.Option(help="String with arbitrary extra parameters for PHATE."),
+    ] = "",
+    pca_before: Annotated[
+        bool,
+        typer.Option(
+            "--pca_before",
+            help="Whether to perform PCA before PHATE."
+        ),
+    ] = False,
+    var_explained: Annotated[
+        float,
+        typer.Option(
+            min=0,
+            max=1,
+            help="""
+            If --pca_before is set, this specifies the proportion of variance
+            for the PCA Components to be kept.
+            """,
+        ),
+    ] = 0.95,
+    plot: Annotated[
+        bool,
+        typer.Option(
+            "--plot",
+            help="Make a scatterplot of the two first PHATE Components."
+        ),
+    ] = False,
+):
+    """
+    Perform PHATE for dimensionality reduction.
+    """
+    from phate import PHATE
+
+    # Read data
+    data = preprocess(
+        global_opts["input"],
+        global_opts["scale"],
+        do_pca=pca_before,
+        var_expl=var_explained,
+    )
+
+    # Parse PHATE kwargs string to dictionary
+    phate_kwargs_dict = parse_kwargs_string(
+        phate_kwargs
+    ) if phate_kwargs else {}
+
+    # Perform PHATE
+    phate = PHATE(
+        n_components=n_components,
+        knn=knn,
+        decay=decay,
+        knn_dist=knn_dist,
+        verbose=verbose,
+        **phate_kwargs_dict,
+    )
+    reduced_data = phate.fit_transform(data)
+
+    # Write PHATE Components to a file
+    df = pd.DataFrame(
+        reduced_data, columns=[f"PHATE{i}" for i in range(1, n_components + 1)]
+    )
+    df.to_csv(global_opts["output"], index=False)
+
+    # Make PHATE scatterplot
+    if plot:
+        phate_plot = (
+            ggplot(df, aes(x="PHATE1", y="PHATE2"))
+            + geom_point()
+            + theme_bw()
+        )
+        phate_plot.save("PHATE_plot.pdf")
 
 
 if __name__ == "__main__":
