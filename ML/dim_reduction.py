@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-# import pymde
-
 import ast
 from pathlib import Path
 
@@ -492,6 +490,156 @@ def phate(
             + theme_bw()
         )
         phate_plot.save("PHATE_plot.pdf")
+
+
+# Command for PyMDE
+@dreduc.command()
+def pymde(
+    embedding_dim: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="Number of embedding dimensions."
+        ),
+    ] = 2,
+    preserve_neighbors: Annotated[
+        bool,
+        typer.Option(
+            "--preserve_neighbors/--preserve_distances",
+            help="""
+            --preserve_neighbors creates embeddings that focus on the local
+            structure of the data.
+            --preserve_distances focuses more on the global structure.
+            """
+        ),
+    ] = True,
+    n_neighbors: Annotated[
+        int,
+        typer.Option(
+            help="""
+            Number of nearest neighbors to compute for each row. A sensible
+            value is chosen by default, depending on the number of items. Used
+            when --preserve_neighbors is selected.
+            """
+        ),
+    ] = None,
+    standardized_constraint: Annotated[
+        bool,
+        typer.Option(
+            "--standardized_constraint",
+            help="""
+            This causes the embedding to have uncorrelated columns, and
+            prevents it from spreading out too much.
+            """
+        ),
+    ] = False,
+    seed: Annotated[
+        int,
+        typer.Option(
+            help="""
+            A random seed that PyMDE uses in various preprocessing methods. Use
+            this for reproducible output.
+            """
+        ),
+    ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            help="Status updates during the optimization process."
+        ),
+    ] = False,
+    pymde_kwargs: Annotated[
+        str,
+        typer.Option(help="String with arbitrary extra parameters for PyMDE."),
+    ] = "",
+    pca_before: Annotated[
+        bool,
+        typer.Option(
+            "--pca_before",
+            help="Whether to perform PCA before PyMDE."
+        ),
+    ] = False,
+    var_explained: Annotated[
+        float,
+        typer.Option(
+            min=0,
+            max=1,
+            help="""
+            If --pca_before is set, this specifies the proportion of variance
+            for the PCA Components to be kept.
+            """,
+        ),
+    ] = 0.95,
+    plot: Annotated[
+        bool,
+        typer.Option(
+            "--plot",
+            help="Make a scatterplot of the two first PyMDE Components."
+        ),
+    ] = False,
+):
+    """
+    Perform PyMDE for dimensionality reduction. Minimum-Distortion Embedding
+    """
+    import pymde
+
+    # Read data
+    data = preprocess(
+        global_opts["input"],
+        global_opts["scale"],
+        do_pca=pca_before,
+        var_expl=var_explained,
+    )
+
+    # Parse PyMDE kwargs string to dictionary
+    pymde_kwargs_dict = parse_kwargs_string(
+        pymde_kwargs
+    ) if pymde_kwargs else {}
+
+    # Constraint
+    constraint = pymde.Standardized() if standardized_constraint else None
+
+    # Seed
+    if seed:
+        pymde.seed(seed)
+
+    # Perform PyMDE
+    if preserve_neighbors:
+        mde = pymde.preserve_neighbors(
+            data=data,
+            embedding_dim=embedding_dim,
+            n_neighbors=n_neighbors,
+            constraint=constraint,
+            verbose=verbose,
+            **pymde_kwargs_dict,
+        )
+    else:
+        mde = pymde.preserve_distances(
+            data=data,
+            embedding_dim=embedding_dim,
+            constraint=constraint,
+            verbose=verbose,
+            **pymde_kwargs_dict,
+        )
+
+    reduced_data = mde.embed(verbose=verbose)
+
+    # Write PyMDE Components to a file
+    df = pd.DataFrame(
+        reduced_data,
+        columns=[f"PyMDE{i}" for i in range(1, embedding_dim + 1)],
+    )
+    df.to_csv(global_opts["output"], index=False)
+
+    # Make PyMDE scatterplot
+    if plot:
+        pymde_plot = (
+            ggplot(df, aes(x="PyMDE1", y="PyMDE2"))
+            + geom_point()
+            + theme_bw()
+        )
+        pymde_plot.save("PyMDE_plot.pdf")
 
 
 if __name__ == "__main__":
