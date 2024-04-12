@@ -38,6 +38,23 @@ def preprocess(
     return data
 
 
+# Function for reading file with labels
+def read_labels(label_file: Path) -> pd.DataFrame:
+    """
+    Read labels from a file and check for the label column.
+
+    Args:
+        label_file (str): Path to the file containing labels.
+
+    Returns:
+        pd.DataFrame: DataFrame containing labels.
+    """
+    labels = pd.read_csv(label_file)
+    if "label" not in labels.columns:
+        raise ValueError("Label file must contain a 'label' column.")
+    return labels
+
+
 # Function for parsing argument string
 def parse_kwargs_string(kwargs_string: str) -> dict:
     """
@@ -61,6 +78,36 @@ def parse_kwargs_string(kwargs_string: str) -> dict:
     return kwargs_dict
 
 
+# Function for making a scatterplot of the reduced data
+def plot_data(df: pd.DataFrame, labels_exist: bool, method: str) -> ggplot:
+    """
+    Plot the reduced data and return the plot object.
+
+    Args:
+        df: DataFrame containing the reduced data.
+        label_file: Are labels inculded in df?
+        method: Method used for dimensionality reduction
+
+    Returns:
+        ggplot: Plot object.
+    """
+
+    if labels_exist:
+        plot = (
+            ggplot(df, aes(x=f"{method}1", y=f"{method}2", color="label"))
+            + geom_point()
+            + theme_bw()
+        )
+    else:
+        plot = (
+            ggplot(df, aes(x=f"{method}1", y=f"{method}2"))
+            + geom_point()
+            + theme_bw()
+        )
+
+    return plot
+
+
 # Use callback for global options and documentation
 @dreduc.callback()
 def main(
@@ -79,6 +126,21 @@ def main(
     output_file: Annotated[
         str, typer.Option(help="Path to save the reduced data.")
     ] = "data_reduced.tsv",
+    label_file: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            writable=False,
+            readable=True,
+            resolve_path=True,
+            help="""
+            Path to the file containing labels for coloring points in the
+            scatterplot. It must contain a column named 'label'.
+            """,
+        ),
+    ] = None,
     scale: Annotated[
         bool,
         typer.Option(help="Scale data before any dim-reduc method is applied.")
@@ -92,6 +154,7 @@ def main(
     global_opts["input"] = input_file
     global_opts["scale"] = scale
     global_opts["output"] = output_file
+    global_opts["labels"] = label_file
 
 
 # Command for PCA
@@ -113,7 +176,7 @@ def pca(
     ] = False,
 ):
     """
-    Perform PCA for dimensionality reduction.
+    Perform PCA for dimensionality reduction. Principal Component Analysis
     """
     # Read data
     data = preprocess(global_opts["input"], global_opts["scale"])
@@ -130,11 +193,16 @@ def pca(
 
     # Make PCA scatterplot
     if plot:
+        labels_exist = False
+
+        if global_opts["labels"]:
+            labels = read_labels(global_opts["labels"])
+            df["label"] = labels["label"]
+            labels_exist = True
+
         var_explained = pca.explained_variance_ratio_ * 100
         pca_plot = (
-            ggplot(df, aes(x="PC1", y="PC2"))
-            + geom_point()
-            + theme_bw()
+            plot_data(df, labels_exist, "PC")
             + labs(
                 x=f"PC1 ({var_explained[0]:.2f}%)",
                 y=f"PC2 ({var_explained[1]:.2f}%)"
@@ -166,7 +234,7 @@ def isomap(
     ] = False,
 ):
     """
-    Perform Isomap for dimensionality reduction.
+    Perform Isomap for dimensionality reduction. Isomap
     """
     from sklearn.manifold import Isomap
 
@@ -186,11 +254,14 @@ def isomap(
 
     # Make Isomap scatterplot
     if plot:
-        isomap_plot = (
-            ggplot(df, aes(x="Isomap1", y="Isomap2"))
-            + geom_point()
-            + theme_bw()
-        )
+        labels_exist = False
+
+        if global_opts["labels"]:
+            labels = read_labels(global_opts["labels"])
+            df["label"] = labels["label"]
+            labels_exist = True
+
+        isomap_plot = plot_data(df, labels_exist, "Isomap")
         isomap_plot.save("Isomap_plot.pdf")
 
 
@@ -244,6 +315,7 @@ def tsne(
 ):
     """
     Perform t-SNE for dimensionality reduction.
+    t-distributed Stochastic Neighbor Embedding
     """
     from sklearn.manifold import TSNE
 
@@ -270,11 +342,14 @@ def tsne(
 
     # Make t-SNE scatterplot
     if plot:
-        tsne_plot = (
-            ggplot(df, aes(x="t-SNE1", y="t-SNE2"))
-            + geom_point()
-            + theme_bw()
-        )
+        labels_exist = False
+
+        if global_opts["labels"]:
+            labels = read_labels(global_opts["labels"])
+            df["label"] = labels["label"]
+            labels_exist = True
+
+        tsne_plot = plot_data(df, labels_exist, "t-SNE")
         tsne_plot.save("tSNE_plot.pdf")
 
 
@@ -343,6 +418,7 @@ def umap(
 ):
     """
     Perform UMAP for dimensionality reduction.
+    Uniform Manifold Approximation and Projection
     """
     from umap import UMAP
 
@@ -376,11 +452,14 @@ def umap(
 
     # Make UMAP scatterplot
     if plot:
-        umap_plot = (
-            ggplot(df, aes(x="UMAP1", y="UMAP2"))
-            + geom_point()
-            + theme_bw()
-        )
+        labels_exist = False
+
+        if global_opts["labels"]:
+            labels = read_labels(global_opts["labels"])
+            df["label"] = labels["label"]
+            labels_exist = True
+
+        umap_plot = plot_data(df, labels_exist, "UMAP")
         umap_plot.save("UMAP_plot.pdf")
 
 
@@ -449,6 +528,7 @@ def phate(
 ):
     """
     Perform PHATE for dimensionality reduction.
+    Potential of Heat-diffusion for Affinity-based Transition Embedding
     """
     from phate import PHATE
 
@@ -484,11 +564,14 @@ def phate(
 
     # Make PHATE scatterplot
     if plot:
-        phate_plot = (
-            ggplot(df, aes(x="PHATE1", y="PHATE2"))
-            + geom_point()
-            + theme_bw()
-        )
+        labels_exist = False
+
+        if global_opts["labels"]:
+            labels = read_labels(global_opts["labels"])
+            df["label"] = labels["label"]
+            labels_exist = True
+
+        phate_plot = plot_data(df, labels_exist, "PHATE")
         phate_plot.save("PHATE_plot.pdf")
 
 
@@ -634,11 +717,14 @@ def pymde(
 
     # Make PyMDE scatterplot
     if plot:
-        pymde_plot = (
-            ggplot(df, aes(x="PyMDE1", y="PyMDE2"))
-            + geom_point()
-            + theme_bw()
-        )
+        labels_exist = False
+
+        if global_opts["labels"]:
+            labels = read_labels(global_opts["labels"])
+            df["label"] = labels["label"]
+            labels_exist = True
+
+        pymde_plot = plot_data(df, labels_exist, "PyMDE")
         pymde_plot.save("PyMDE_plot.pdf")
 
 
