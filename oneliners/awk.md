@@ -30,6 +30,11 @@ awk '{ sum+=$1 } END { print sum/NR }' file
 sort -n values.txt | awk '{ values[NR]=$1 } END { if (NR % 2) { print values[(NR + 1) / 2] } else { print (values[NR/2] + values[NR/2 + 1]) / 2.0 }}'
 ```
 
+- __Calculate the 95th percentile of a set of values__
+```
+sort -n values.txt | awk '{ values[NR]=$1 } END { print values[int(NR*0.95)] }'
+```
+
 - __Filter lines based on an arbitrary threshold__
 ```
 awk '$3 > 10' file
