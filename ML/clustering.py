@@ -355,5 +355,133 @@ def kmeans(
         kmeans_pca_plot.save("K-Means_pca_plot.pdf")
 
 
+# Command for dbscan
+@cluster.command()
+def dbscan(
+    eps: Annotated[
+        float,
+        typer.Option(
+            min=0,
+            help="""
+            The maximum distance between two samples for one to be considered
+            as in the neighborhood of the other. This is not a maximum bound on
+            the distances of points within a cluster. This is the most
+            important DBSCAN parameter to choose appropriately for your data
+            set and distance function.
+            """,
+        ),
+    ] = 0.5,
+    min_samples: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="""
+            The number of samples (or total weight) in a neighborhood for a
+            point to be considered as a core point. This includes the point
+            itself. If min_samples is set to a higher value, DBSCAN will find
+            denser clusters, whereas if it is set to a lower value, the found
+            clusters will be more sparse.
+            """,
+        ),
+    ] = 5,
+    algorithm: Annotated[
+        str,
+        typer.Option(
+            help="""
+            The algorithm to be used by the NearestNeighbors module to compute
+            pointwise distances and find nearest neighbors.
+            It can take the following values: auto, ball_tree, kd_tree, brute.
+            """,
+        ),
+    ] = "auto",
+    dbscan_kwargs: Annotated[
+        str,
+        typer.Option(
+            help="String with arbitrary extra parameters for DBSCAN."
+        ),
+    ] = "",
+):
+    """
+    Perform DBSCAN clustering.
+    Density-Based Spatial Clustering of Applications with Noise
+
+    Examples:
+
+    clustering.py --input-file input.csv --scale --pca-plot dbscan --eps 0.3
+    --min-samples 10 --dbscan-kwargs 'metric="cosine",n_jobs=2'
+    """
+    from sklearn.cluster import DBSCAN
+
+    # Read data
+    data_df, data, pca_data, pca = preprocess(
+        global_opts["input"],
+        global_opts["scale"],
+        do_pca=global_opts["pca_before"],
+        var_expl=global_opts["var_explained"],
+    )
+
+    # Parse DBSCAN kwargs string to dictionary
+    dbscan_kwargs_dict = parse_kwargs_string(dbscan_kwargs) if dbscan_kwargs else {}
+
+    # Perform DBSCAN
+    dbscan = DBSCAN(
+        eps=eps,
+        min_samples=min_samples,
+        algorithm=algorithm,
+        **dbscan_kwargs_dict,
+    )
+    clusters = dbscan.fit(data)
+
+    # DBSCAN output
+    cluster_labels = clusters.labels_
+    n_clusters = len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)
+    n_noise = list(cluster_labels).count(-1)
+
+    # Write DBSCAN cluster labels to a file
+    df = pd.DataFrame(cluster_labels.astype(str), columns=["cluster"])
+    df.to_csv(global_opts["output"], index=False)
+
+    # Make scatterplot(s)
+    labels_exist = False
+    if global_opts["labels"]:
+        labels = read_labels(global_opts["labels"])
+        df["label"] = labels["label"]
+        labels_exist = True
+
+    if global_opts["plot"]:
+        vars_to_plot = [var.strip() for var in global_opts["plot"].split(",")]
+        df[vars_to_plot[0]] = data_df[vars_to_plot[0]]
+        df[vars_to_plot[1]] = data_df[vars_to_plot[1]]
+
+        dbscan_plot = (
+                plot_data(df, vars_to_plot, labels_exist)
+                + labs(
+                    title="""
+                    DBSCAN Clustering
+                    Number of clusters: {} | Number of noise samples: {}
+                    """.format(n_clusters, n_noise)
+                )
+        )
+        dbscan_plot.save("DBSCAN_plot.pdf")
+
+    if global_opts["pca_plot"]:
+        var_explained = pca.explained_variance_ratio_ * 100
+        df["PC1"] = pca_data[:, 0]
+        df["PC2"] = pca_data[:, 1]
+
+        dbscan_pca_plot = (
+                plot_data(df, ["PC1", "PC2"], labels_exist)
+                + labs(
+                    title="""
+                    DBSCAN Clustering
+                    Number of clusters: {} | Number of noise samples: {}
+                    """.format(n_clusters, n_noise),
+                    x=f"PC1 ({var_explained[0]:.2f}%)",
+                    y=f"PC2 ({var_explained[1]:.2f}%)"
+                )
+        )
+        dbscan_pca_plot.save("DBSCAN_pca_plot.pdf")
+
+
 if __name__ == "__main__":
     cluster()
