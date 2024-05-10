@@ -154,7 +154,7 @@ def main(
     pca_before: Annotated[
         bool,
         typer.Option(
-            "--pca_before",
+            "--pca-before",
             help="Whether to perform PCA before clustering."
         ),
     ] = False,
@@ -183,7 +183,7 @@ def main(
     pca_plot: Annotated[
         bool,
         typer.Option(
-            "--pca_plot",
+            "--pca-plot",
             help="""
             Perform a PCA, and make a scatterplot of the two first principal
             components. Annotate the plot with the results of the clustering.
@@ -209,10 +209,15 @@ def main(
 ):
     """
     Apply clustering analysis with the selected method.
+    For more details on the methods, check:
+    https://scikit-learn.org/stable/modules/clustering.html
 
     Examples:
 
-    clustering.py --input-file input.csv --scale --pca_plot kmeans
+    clustering.py --input-file input.csv --scale
+    --pca-plot kmeans --n-clusters 3
+
+    clustering.py --input-file input.csv --scale --pca-plot dbscan --eps 0.8
     """
 
     # Save global options in a list
@@ -231,10 +236,13 @@ def main(
 def kmeans(
     n_clusters: Annotated[
         int,
-        typer.Option(help="""
-        The number of clusters to form as well as the number of centroids to
-        generate.
-        """),
+        typer.Option(
+            min=1,
+            help="""
+            The number of clusters to form as well as the number of centroids
+            to generate.
+            """,
+        ),
     ],
     init: Annotated[
         str,
@@ -249,7 +257,7 @@ def kmeans(
         str,
         typer.Option(
             help="""
-            K-means algorithm to use.
+            K-Means algorithm to use.
             It can take the following values: lloyd, elkan.
             """
         ),
@@ -274,7 +282,7 @@ def kmeans(
 
     Examples:
 
-    clustering.py --input-file input.csv --scale --pca_plot kmeans --n-clusters
+    clustering.py --input-file input.csv --scale --pca-plot kmeans --n-clusters
     3 --seed 32 --init random --kmeans-kwargs 'n_init=15,max_iter=500'
     --verbose 1
     """
