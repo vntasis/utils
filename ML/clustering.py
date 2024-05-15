@@ -491,5 +491,129 @@ def dbscan(
         dbscan_pca_plot.save("DBSCAN_pca_plot.pdf")
 
 
+# Command for hdbscan
+@cluster.command()
+def hdbscan(
+    min_cluster_size: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="""
+            The minimum number of samples in a group for that group to be
+            considered a cluster; groupings smaller than this size will be left
+            as noise.
+            """,
+        ),
+    ] = 5,
+    min_samples: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="""
+            The number of samples in a neighborhood for a point to be
+            considered as a core point. This includes the point itself. When
+            None, defaults to min_cluster_size.
+            """,
+        ),
+    ] = None,
+    algorithm: Annotated[
+        str,
+        typer.Option(
+            help="""
+            Exactly which algorithm to use for computing core distances.
+            It can take the following values: auto, ball_tree, kd_tree, brute.
+            """,
+        ),
+    ] = "auto",
+    hdbscan_kwargs: Annotated[
+        str,
+        typer.Option(
+            help="String with arbitrary extra parameters for HDBSCAN."
+        ),
+    ] = "",
+):
+    """
+    Perform HDBSCAN clustering.
+    Hierarchical Density-Based Spatial Clustering of Applications with Noise
+
+    Examples:
+
+    clustering.py --input-file input.csv --scale --pca-plot hdbscan
+    --min-cluster-size 10 --hdbscan-kwargs
+    'metric="cosine",n_jobs=2,leaf_size=50'
+    """
+    from sklearn.cluster import HDBSCAN
+
+    # Read data
+    data_df, data, pca_data, pca = preprocess(
+        global_opts["input"],
+        global_opts["scale"],
+        do_pca=global_opts["pca_before"],
+        var_expl=global_opts["var_explained"],
+    )
+
+    # Parse HDBSCAN kwargs string to dictionary
+    hdbscan_kwargs_dict = parse_kwargs_string(hdbscan_kwargs) if hdbscan_kwargs else {}
+
+    # Perform HDBSCAN
+    hdbscan = HDBSCAN(
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        algorithm=algorithm,
+        **hdbscan_kwargs_dict,
+    )
+    clusters = hdbscan.fit(data)
+
+    # HDBSCAN output
+    cluster_labels = clusters.labels_
+    n_clusters = len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)
+    n_noise = list(cluster_labels).count(-1)
+
+    # Write HDBSCAN cluster labels to a file
+    df = pd.DataFrame(cluster_labels.astype(str), columns=["cluster"])
+    df.to_csv(global_opts["output"], index=False)
+
+    # Make scatterplot(s)
+    labels_exist = False
+    if global_opts["labels"]:
+        labels = read_labels(global_opts["labels"])
+        df["label"] = labels["label"]
+        labels_exist = True
+
+    if global_opts["plot"]:
+        vars_to_plot = [var.strip() for var in global_opts["plot"].split(",")]
+        df[vars_to_plot[0]] = data_df[vars_to_plot[0]]
+        df[vars_to_plot[1]] = data_df[vars_to_plot[1]]
+
+        hdbscan_plot = (
+                plot_data(df, vars_to_plot, labels_exist)
+                + labs(
+                    title="""
+                    HDBSCAN Clustering
+                    Number of clusters: {} | Number of noise samples: {}
+                    """.format(n_clusters, n_noise)
+                )
+        )
+        hdbscan_plot.save("HDBSCAN_plot.pdf")
+
+    if global_opts["pca_plot"]:
+        var_explained = pca.explained_variance_ratio_ * 100
+        df["PC1"] = pca_data[:, 0]
+        df["PC2"] = pca_data[:, 1]
+
+        hdbscan_pca_plot = (
+                plot_data(df, ["PC1", "PC2"], labels_exist)
+                + labs(
+                    title="""
+                    HDBSCAN Clustering
+                    Number of clusters: {} | Number of noise samples: {}
+                    """.format(n_clusters, n_noise),
+                    x=f"PC1 ({var_explained[0]:.2f}%)",
+                    y=f"PC2 ({var_explained[1]:.2f}%)"
+                )
+        )
+        hdbscan_pca_plot.save("HDBSCAN_pca_plot.pdf")
+
+
 if __name__ == "__main__":
     cluster()
