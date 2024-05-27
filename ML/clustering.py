@@ -218,6 +218,11 @@ def main(
     --pca-plot kmeans --n-clusters 3
 
     clustering.py --input-file input.csv --scale --pca-plot dbscan --eps 0.8
+
+    clustering.py --input-file input.csv --scale --pca-plot hdbscan
+    --min-cluster-size 10
+
+    clustering.py --input-file input.csv --scale --pca-plot optics --xi 0.2
     """
 
     # Save global options in a list
@@ -613,6 +618,157 @@ def hdbscan(
                 )
         )
         hdbscan_pca_plot.save("HDBSCAN_pca_plot.pdf")
+
+
+# Command for optics
+@cluster.command()
+def optics(
+    max_eps: Annotated[
+        float,
+        typer.Option(
+            min=0,
+            help="""
+            The maximum distance between two samples for one to be considered
+            as in the neighborhood of the other. If None, OPTICS will identify
+            clusters across all scales; reducing max_eps will result in shorter
+            run times.
+            """,
+        ),
+    ] = None,
+    min_samples: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="""
+            The number of samples in a neighborhood for a point to be
+            considered as a core point.
+            """,
+        ),
+    ] = 5,
+    min_cluster_size: Annotated[
+        int,
+        typer.Option(
+            min=2,
+            help="""
+            Minimum number of samples in an OPTICS cluster.
+            If None, the value of min_samples is used instead.
+            """,
+        ),
+    ] = None,
+    xi: Annotated[
+        float,
+        typer.Option(
+            min=0,
+            max=1,
+            help="""
+            Determines the minimum steepness on the reachability plot that
+            constitutes a cluster boundary. For example, an upwards point in
+            the reachability plot is defined by the ratio from one point to its
+            successor being at most 1-xi.
+            """,
+        ),
+    ] = 0.05,
+    algorithm: Annotated[
+        str,
+        typer.Option(
+            help="""
+            Algorithm used to compute the nearest neighbors.
+            It can take the following values: auto, ball_tree, kd_tree, brute.
+            """,
+        ),
+    ] = "auto",
+    optics_kwargs: Annotated[
+        str,
+        typer.Option(
+            help="String with arbitrary extra parameters for OPTICS."
+        ),
+    ] = "",
+):
+    """
+    Perform OPTICS clustering.
+    Ordering Points To Identify the Clustering Structure
+
+    Examples:
+
+    clustering.py --input-file input.csv --scale --pca-plot optics
+    --min-samples 10 --optics-kwargs 'metric="cosine",n_jobs=2'
+    """
+    from sklearn.cluster import OPTICS
+
+    # Read data
+    data_df, data, pca_data, pca = preprocess(
+        global_opts["input"],
+        global_opts["scale"],
+        do_pca=global_opts["pca_before"],
+        var_expl=global_opts["var_explained"],
+    )
+
+    # max_eps
+    max_eps = max_eps if max_eps else np.inf
+
+    # Parse OPTICS kwargs string to dictionary
+    optics_kwargs_dict = parse_kwargs_string(optics_kwargs) if optics_kwargs else {}
+
+    # Perform OPTICS
+    optics = OPTICS(
+        max_eps=max_eps,
+        min_samples=min_samples,
+        min_cluster_size=min_cluster_size,
+        xi=xi,
+        algorithm=algorithm,
+        **optics_kwargs_dict,
+    )
+    clusters = optics.fit(data)
+
+    # OPTICS output
+    cluster_labels = clusters.labels_
+    n_clusters = len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)
+    n_noise = list(cluster_labels).count(-1)
+
+    # Write OPTICS cluster labels to a file
+    df = pd.DataFrame(cluster_labels.astype(str), columns=["cluster"])
+    df.to_csv(global_opts["output"], index=False)
+
+    # Make scatterplot(s)
+    labels_exist = False
+    if global_opts["labels"]:
+        labels = read_labels(global_opts["labels"])
+        df["label"] = labels["label"]
+        labels_exist = True
+
+    if global_opts["plot"]:
+        vars_to_plot = [var.strip() for var in global_opts["plot"].split(",")]
+        df[vars_to_plot[0]] = data_df[vars_to_plot[0]]
+        df[vars_to_plot[1]] = data_df[vars_to_plot[1]]
+
+        optics_plot = (
+                plot_data(df, vars_to_plot, labels_exist)
+                + labs(
+                    title="""
+                    OPTICS Clustering
+                    Number of clusters: {} | Number of noise samples: {}
+                    """.format(n_clusters, n_noise)
+                )
+        )
+        optics_plot.save("OPTICS_plot.pdf")
+
+    if global_opts["pca_plot"]:
+        var_explained = pca.explained_variance_ratio_ * 100
+        df["PC1"] = pca_data[:, 0]
+        df["PC2"] = pca_data[:, 1]
+
+        optics_pca_plot = (
+                plot_data(df, ["PC1", "PC2"], labels_exist)
+                + labs(
+                    title="""
+                    OPTICS Clustering
+                    Number of clusters: {} | Number of noise samples: {}
+                    """.format(n_clusters, n_noise),
+                    x=f"PC1 ({var_explained[0]:.2f}%)",
+                    y=f"PC2 ({var_explained[1]:.2f}%)"
+                )
+        )
+        optics_pca_plot.save("OPTICS_pca_plot.pdf")
 
 
 if __name__ == "__main__":
