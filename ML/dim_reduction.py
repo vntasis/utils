@@ -290,7 +290,7 @@ def tsne(
     pca_before: Annotated[
         bool,
         typer.Option(
-            "--pca_before",
+            "--pca-before",
             help="Whether to perform PCA before t-SNE."
         ),
     ] = False,
@@ -393,7 +393,7 @@ def umap(
     pca_before: Annotated[
         bool,
         typer.Option(
-            "--pca_before",
+            "--pca-before",
             help="Whether to perform PCA before UMAP."
         ),
     ] = False,
@@ -503,7 +503,7 @@ def phate(
     pca_before: Annotated[
         bool,
         typer.Option(
-            "--pca_before",
+            "--pca-before",
             help="Whether to perform PCA before PHATE."
         ),
     ] = False,
@@ -588,11 +588,11 @@ def pymde(
     preserve_neighbors: Annotated[
         bool,
         typer.Option(
-            "--preserve_neighbors/--preserve_distances",
+            "--preserve-neighbors/--preserve-distances",
             help="""
-            --preserve_neighbors creates embeddings that focus on the local
+            --preserve-neighbors creates embeddings that focus on the local
             structure of the data.
-            --preserve_distances focuses more on the global structure.
+            --preserve-distances focuses more on the global structure.
             """
         ),
     ] = True,
@@ -609,7 +609,7 @@ def pymde(
     standardized_constraint: Annotated[
         bool,
         typer.Option(
-            "--standardized_constraint",
+            "--standardized-constraint",
             help="""
             This causes the embedding to have uncorrelated columns, and
             prevents it from spreading out too much.
@@ -639,7 +639,7 @@ def pymde(
     pca_before: Annotated[
         bool,
         typer.Option(
-            "--pca_before",
+            "--pca-before",
             help="Whether to perform PCA before PyMDE."
         ),
     ] = False,
