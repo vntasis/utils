@@ -1,5 +1,60 @@
 #!/usr/bin/awk -f
 
+# Classify time course data
+#
+# Display help message
+# classify_time_course.awk -- -h
+#
+# Author: Vasilis Ntasis
+# Adjusted Awk version of a Perl script written by Ramil Nurtdinov
+
+function print_help() {
+    help_message = "Classify time course data\n" \
+                 "=========================\n" \
+                 "Usage: classify_time_course.awk [Parameters] -- [-h] INPUT-FILE\n" \
+                 "\n" \
+                 "Parameters (can be specified using the -v option of awk):\n" \
+                 "  comp_threshold              Comparison threshold (default: 0.25)\n" \
+                 "  fold_change_cutoff          Fold change cutoff (default: 1)\n" \
+                 "  high_expression_cutoff      High expression cutoff (default: 4)\n" \
+                 "  low_expression_cutoff       Low expression cutoff (default: 1)\n" \
+                 "  need_logarithm              Need logarithm (default: 0)\n" \
+                 "  peak_height                 Peak height (default: 1)\n" \
+                 "  prof_threshold              Profile threshold (default: 0.50)\n" \
+                 "  summary_file                Summary file (default: classes_summary.tsv)\n" \
+                 "  tc_length                   Time course length (default: 3)\n" \
+                 "\n" \
+                 "Options:\n" \
+                 "  -h                          Display this help message and exit\n" \
+                 "\n" \
+                 "Input:\n" \
+                 "  INPUT-FILE must be a tab-separated file of time course data\n" \
+                 "  with a header in the first line. Each row represents a measured variable,\n" \
+                 "  and each column represents a consecutive time-point.\n" \
+                 "  The first column should contain a variable-specific identifier.\n" \
+                 "  E.g.\n" \
+                 "    id\ttp1\ttp2\ttp3\ttp4\n" \
+                 "    g1\t5\t50\t100\t200\n" \
+                 "    g3\t100\t50\t5\t1\n" \
+                 "\n" \
+                 "Output:\n" \
+                 "  Classifies each variable in the input time course dataset\n" \
+                 "  in on of the following profiles:\n" \
+                 "    upregulation\n" \
+                 "    downregulation\n" \
+                 "    peaking\n" \
+                 "    bending\n" \
+                 "    high expression\n" \
+                 "    moderate expression\n" \
+                 "    low expression\n" \
+                 "\n" \
+                 "Examples:\n" \
+                 "  ./classify_time_course.awk -v comp_threshold=0.3 -v fold_change_cutoff=2 -- input-file.tsv\n" \
+                 "  ./classify_time_course.awk -- -h"
+
+    print help_message
+}
+
 function log2(x) { return log(1+x)/log(2) }
 
 function abs(x) { return x < 0 ? -x : x }
@@ -97,6 +152,18 @@ function get_bending(min_value, min_index, last_tp, total_diff, out) {
 }
 
 BEGIN {
+
+    for (i = 1; i < ARGC; i++) {
+        if (ARGV[i] == "-h") { print_help(); exit; }
+        else if (ARGV[i] ~ /^-./) {
+            e = sprintf("%s: unrecognized option -- %c",
+                    ARGV[0], substr(ARGV[i], 2, 1))
+            print e > "/dev/stderr"
+            exit 2
+        } else
+            break
+    }
+
     # Params
     comp_threshold          = comp_threshold == "" ? 0.25 : comp_threshold
     fold_change_cutoff      = fold_change_cutoff == "" ? 1 : fold_change_cutoff
