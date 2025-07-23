@@ -11,10 +11,8 @@ summarize the results
 
 Positional parameters:
 @param1 path to dir with json files
-@param2 width of the pdf containing
-the barplot
-@ param3 height of the pdf containing
-the barplot
+@param2 width of the pdf files
+@ param3 height of the pdf files
 
 Returns:
 Two pdf files
@@ -33,7 +31,6 @@ import sys
 import os
 import numpy as np
 from plotnine import *
-from dfply import *
 
 
 # Define a recursive function to remove a specific key from a nested
@@ -82,16 +79,26 @@ def main():
         df = read_stats_json(os.path.join(bamstats_dir, bamstats_files[i]))
         bamstats_df = bamstats_df.append(df, ignore_index=True)
 
-    # Summarize the number of total - mapped - uniqule mapped reads
-    mapped_reads = \
-        bamstats_df >> \
-        rename(Total='general.reads.total', Mapped='coverage.total.total', Uniquely_mapped='coverageUniq.total.total') >> \
-        gather('reads', 'number_of_reads',['Total', 'Mapped', 'Uniquely_mapped'], add_id=True) >> \
-        select(['_ID', 'reads', 'number_of_reads'])
+    # Summarize the number of total - mapped - uniquely mapped reads
+    mapped_reads = (
+        bamstats_df.rename(
+            columns={
+                'general.reads.total': 'Total',
+                'coverage.total.total': 'Mapped',
+                'coverageUniq.total.total': 'Uniquely_mapped'
+            })
+            .loc[:, ['Total', 'Mapped', 'Uniquely_mapped']]
+            .melt(
+                value_vars=['Total', 'Mapped', 'Uniquely_mapped'],
+                var_name='reads', value_name='number_of_reads', ignore_index=False
+            )
+            .reset_index()
+            .rename(columns={'index': 'ID'})
+     )
 
     # Plot a barplot with the number of reads per sample
     plot = (ggplot(mapped_reads, \
-        aes(x='factor(_ID)', y='number_of_reads', fill='reads'))
+        aes(x='factor(ID)', y='number_of_reads', fill='reads'))
         + geom_col(stat='identity', position='dodge')
         + theme_bw()
         + scale_fill_brewer(type = 'qual', palette='Dark2')
@@ -103,32 +110,36 @@ def main():
     # Summarize the proportion of mapped reads in different
     # genomic regions, e.g exon, intergenic, intron
     bamstats_df.columns = bamstats_df.columns.str.replace('.', '_')
-    proportion_reads = \
-        bamstats_df >> \
-        mutate(\
-        all__exonic_intronic=(X.coverage_total_exonic_intronic /  X.coverage_total_total), \
-        all__intron=(X.coverage_total_intron /  X.coverage_total_total), \
-        all__exon=(X.coverage_total_exon /  X.coverage_total_total), \
-        all__intergenic=(X.coverage_total_intergenic /  X.coverage_total_total), \
-        all__others=(X.coverage_total_others /  X.coverage_total_total), \
-        \
-        continuous__exonic_intronic=(X.coverage_continuous_exonic_intronic /  X.coverage_total_total), \
-        continuous__intron=(X.coverage_continuous_intron /  X.coverage_total_total), \
-        continuous__exon=(X.coverage_continuous_exon /  X.coverage_total_total), \
-        continuous__intergenic=(X.coverage_continuous_intergenic /  X.coverage_total_total), \
-        continuous__others=(X.coverage_continuous_others /  X.coverage_total_total), \
-        continuous__total=(X.coverage_continuous_total /  X.coverage_total_total), \
-        \
-        split__exonic_intronic=(X.coverage_split_exonic_intronic /  X.coverage_total_total), \
-        split__intron=(X.coverage_split_intron /  X.coverage_total_total), \
-        split__exon=(X.coverage_split_exon /  X.coverage_total_total), \
-        split__intergenic=(X.coverage_split_intergenic /  X.coverage_total_total), \
-        split__others=(X.coverage_split_others /  X.coverage_total_total), \
-        split__total=(X.coverage_split_total /  X.coverage_total_total), \
-        ) >> \
-        select(contains('__')) >> \
-        gather('category', 'proportion') >> \
-        separate(X.category, ['mapping_type', 'mapped_region'], '__', True, extra='merge')
+    proportion_reads = (
+        bamstats_df.assign(
+            all__exonic_intronic=(bamstats_df.eval("coverage_total_exonic_intronic /  coverage_total_total")),
+            all__intron=(bamstats_df.eval("coverage_total_intron /  coverage_total_total")),
+            all__exon=(bamstats_df.eval("coverage_total_exon /  coverage_total_total")),
+            all__intergenic=(bamstats_df.eval("coverage_total_intergenic /  coverage_total_total")),
+            all__others=(bamstats_df.eval("coverage_total_others /  coverage_total_total")),
+            \
+            continuous__exonic_intronic=(bamstats_df.eval("coverage_continuous_exonic_intronic /  coverage_total_total")),
+            continuous__intron=(bamstats_df.eval("coverage_continuous_intron /  coverage_total_total")),
+            continuous__exon=(bamstats_df.eval("coverage_continuous_exon /  coverage_total_total")),
+            continuous__intergenic=(bamstats_df.eval("coverage_continuous_intergenic /  coverage_total_total")),
+            continuous__others=(bamstats_df.eval("coverage_continuous_others /  coverage_total_total")),
+            continuous__total=(bamstats_df.eval("coverage_continuous_total /  coverage_total_total")),
+            \
+            split__exonic_intronic=(bamstats_df.eval("coverage_split_exonic_intronic /  coverage_total_total")),
+            split__intron=(bamstats_df.eval("coverage_split_intron /  coverage_total_total")),
+            split__exon=(bamstats_df.eval("coverage_split_exon /  coverage_total_total")),
+            split__intergenic=(bamstats_df.eval("coverage_split_intergenic /  coverage_total_total")),
+            split__others=(bamstats_df.eval("coverage_split_others /  coverage_total_total")),
+            split__total=(bamstats_df.eval("coverage_split_total /  coverage_total_total"))
+        )
+        .filter(like='__', axis='columns')
+        .melt(var_name='category', value_name='proportion')
+        .assign(
+            mapping_type = lambda x: x['category'].str.split('__', expand=True) [0],
+            mapped_region = lambda x: x['category'].str.split('__', expand=True) [1]
+        )
+        .drop(columns='category')
+    )
 
     # Plot boxplots with the different proportions of mapped reads
     plot = (ggplot(proportion_reads, \
@@ -140,7 +151,7 @@ def main():
         + xlab('')
         + ylab('Proportion of mapped reads'))
 
-    plot.save('mapped_proportion.pdf', width=10, height=7)
+    plot.save('mapped_proportion.pdf', width=plot_width, height=plot_height)
 
 
 if __name__ == '__main__':
