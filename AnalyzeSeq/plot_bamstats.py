@@ -77,7 +77,7 @@ def main():
                                                bamstats_files[0]))
     for i in range(1, len(bamstats_files)):
         df = read_stats_json(os.path.join(bamstats_dir, bamstats_files[i]))
-        bamstats_df = bamstats_df.append(df, ignore_index=True)
+        bamstats_df = pd.concat([bamstats_df, df], ignore_index=True)
 
     # Summarize the number of total - mapped - uniquely mapped reads
     mapped_reads = (
